@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="zh-hans" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenWrt上使用AutoSSH建立反向代理 | 欢迎来到基德的Blog</title><meta name="description" content="丈母娘想让我解决她们家Wifi信号弱的问题，我决定把家里原来唯一的无线路由器变成纯AP，弱电箱里放一个星际宝盒，另外在客厅放一台K2保证全家的Wifi覆盖。本来路由器这种东西设置好了就不会再动了，可是我还需要解决他们家网络电视的问题，网络电视这种东西，直播源很容易失效，感觉以后会涉及到远程维护了。我之前写过Ubuntu下用Autossh建立反向连接的博文，现在想照搬到OpenWrt上。但是Open"><meta name="author" content="KIDand怪盗基德"><meta name="copyright" content="KIDand怪盗基德"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><link rel="shortcut icon" href="/img/avatar.jpeg"><link rel="canonical" href="http://weiyangbo.gitee.io/2020/03/21/SSH-reverse-tunnel-Openwrt/"><link rel="preconnect" href="//cdn.jsdelivr.net"><link rel="preconnect" href="//busuanzi.ibruce.info"><meta property="og:type" content="article"><meta property="og:title" content="OpenWrt上使用AutoSSH建立反向代理"><meta property="og:url" content="http://weiyangbo.gitee.io/2020/03/21/SSH-reverse-tunnel-Openwrt/"><meta property="og:site_name" content="欢迎来到基德的Blog"><meta property="og:description" content="丈母娘想让我解决她们家Wifi信号弱的问题，我决定把家里原来唯一的无线路由器变成纯AP，弱电箱里放一个星际宝盒，另外在客厅放一台K2保证全家的Wifi覆盖。本来路由器这种东西设置好了就不会再动了，可是我还需要解决他们家网络电视的问题，网络电视这种东西，直播源很容易失效，感觉以后会涉及到远程维护了。我之前写过Ubuntu下用Autossh建立反向连接的博文，现在想照搬到OpenWrt上。但是Open"><meta property="og:image" content="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg"><meta property="article:published_time" content="2020-03-21T06:47:41.000Z"><meta property="article:modified_time" content="2021-02-12T01:12:29.878Z"><meta name="twitter:card" content="summary"><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  hexoversion: '5.2.0',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"We didn't find any results for the search: ${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: 'Copy successfully',
+    error: 'Copy error',
+    noSupport: 'The browser does not support'
+  },
+  bookmark: {
+    message_prev: 'Press',
+    message_next: 'to bookmark this page'
+  },
+  runtime: '',
+  date_suffix: {"one_hour":"Just","hours":"hours ago","day":"days ago"},
+  copyright: undefined,
+  ClickShowText: {"text":"富强,民主,文明,文明,和谐,自由,平等,公正,法制,爱国,敬业,诚信,友善","fontSize":"16px"},
+  medium_zoom: false,
+  fancybox: true,
+  Snackbar: undefined,
+  justifiedGallery: {
+    js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+    css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+  },
+  baiduPush: false,
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isanchor: true
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+    },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}</script><script id="config_change">var GLOBAL_CONFIG_SITE={isPost:!0,isHome:!1,isHighlightShrink:!1,isSidebar:!0,postUpdate:"2021-02-12 09:12:29"}</script><noscript><style type="text/css">#nav{opacity:1}.justified-gallery img{opacity:1}</style></noscript><script>var activateDarkMode=function(){document.documentElement.setAttribute("data-theme","dark"),null!==document.querySelector('meta[name="theme-color"]')&&document.querySelector('meta[name="theme-color"]').setAttribute("content","#0d0d0d")},activateLightMode=function(){document.documentElement.setAttribute("data-theme","light"),null!==document.querySelector('meta[name="theme-color"]')&&document.querySelector('meta[name="theme-color"]').setAttribute("content","#ffffff")},autoChangeMode="1",t=saveToLocal.get("theme");if("1"===autoChangeMode){var isDarkMode=window.matchMedia("(prefers-color-scheme: dark)").matches,isLightMode=window.matchMedia("(prefers-color-scheme: light)").matches,isNotSpecified=window.matchMedia("(prefers-color-scheme: no-preference)").matches,hasNoSupport=!isDarkMode&&!isLightMode&&!isNotSpecified;if(void 0===t){if(isLightMode)activateLightMode();else if(isDarkMode)activateDarkMode();else if(isNotSpecified||hasNoSupport){var now=new Date,hour=now.getHours(),isNight=hour<=6||18<=hour;isNight?activateDarkMode():activateLightMode()}window.matchMedia("(prefers-color-scheme: dark)").addListener(function(e){void 0===saveToLocal.get("theme")&&(e.matches?activateDarkMode():activateLightMode())})}else"light"===t?activateLightMode():activateDarkMode()}else"2"===autoChangeMode?(isNight=(hour=(now=new Date).getHours())<=6||18<=hour,void 0===t?isNight?activateDarkMode():activateLightMode():"light"===t?activateLightMode():activateDarkMode()):"dark"===t?activateDarkMode():"light"===t&&activateLightMode()</script><meta name="generator" content="Hexo 5.2.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">Loading...</div></div></div><div id="mobile-sidebar"><div id="menu_mask"></div><div id="mobile-sidebar-menus"><div class="mobile_author_icon"><img class="avatar-img" data-lazy-src="/img/avatar.jpeg" onerror='onerror=null,src="/img/friend_404.gif"' alt="avatar"></div><div class="mobile_post_data"><div class="mobile_data_item is-center"><div class="mobile_data_link"><a href="/archives/"><div class="headline">Articles</div><div class="length_num">11</div></a></div></div><div class="mobile_data_item is-center"><div class="mobile_data_link"><a href="/tags/"><div class="headline">Tags</div><div class="length_num">1</div></a></div></div></div><hr></div></div><div id="body-wrap"><div id="sidebar"><i class="fas fa-arrow-right on" id="toggle-sidebar"></i><div class="sidebar-toc"><div class="sidebar-toc__title">Catalog</div><div class="sidebar-toc__progress"><span class="progress-notice">You've read</span><span class="progress-num">0</span><span class="progress-percentage">%</span><div class="sidebar-toc__progress-bar"></div></div><div class="sidebar-toc__content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%89%8D%E6%9C%9F%E5%87%86%E5%A4%87"><span class="toc-number">1.</span> <span class="toc-text">前期准备</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E5%85%AC%E7%BD%91%E6%9C%8D%E5%8A%A1%E5%99%A8A%E7%9A%84SSH%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6-etc-ssh-sshd-config"><span class="toc-number">2.</span> <span class="toc-text">修改公网服务器A的SSH配置文件&#x2F;etc&#x2F;ssh&#x2F;sshd_config</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%94%A8%E5%86%85%E7%BD%91B%E6%9C%BA%E5%99%A8%E4%BF%9D%E5%AD%98%E5%85%AC%E7%BD%91%E6%9C%8D%E5%8A%A1%E5%99%A8A%E7%9A%84%E5%AF%86%E9%92%A5%EF%BC%8C%E4%BB%A5%E4%BE%BF%E5%85%8D%E5%AF%86%E8%BF%9E%E6%8E%A5"><span class="toc-number">3.</span> <span class="toc-text">用内网B机器保存公网服务器A的密钥，以便免密连接</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9C%A8%E5%86%85%E7%BD%91B%E6%9C%BA%E5%99%A8%E4%B8%8A%E5%B0%9D%E8%AF%95%E5%BB%BA%E7%AB%8B%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86"><span class="toc-number">4.</span> <span class="toc-text">在内网B机器上尝试建立反向代理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#AutoSSH-%E8%87%AA%E5%8A%A8%E9%87%8D%E8%BF%9E"><span class="toc-number">5.</span> <span class="toc-text">AutoSSH 自动重连</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85AutoSSH"><span class="toc-number">5.1.</span> <span class="toc-text">安装AutoSSH</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%86AutoSSH%E6%B7%BB%E5%8A%A0%E5%88%B0%E5%BC%80%E6%9C%BA%E8%87%AA%E5%90%AF"><span class="toc-number">5.2.</span> <span class="toc-text">将AutoSSH添加到开机自启</span></a></li></ol></li></ol></div></div></div><header class="post-bg" id="page-header" style="background-image:url(https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">欢迎来到基德的Blog</a></span><span id="menus"><div id="search_button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i> <span>Search</span></a></div><span class="close" id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></span></span></nav><div id="post-info"><div id="post-title"><div class="posttitle">OpenWrt上使用AutoSSH建立反向代理</div></div><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2020-03-21T06:47:41.000Z" title="Created 2020-03-21 14:47:41">2020-03-21</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2021-02-12T01:12:29.878Z" title="Updated 2021-02-12 09:12:29">2021-02-12</time></span></div><div class="meta-secondline"> <span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">Word count:</span><span class="word-count">656</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">Reading time:</span><span>2min</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post View:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout_post" id="content-inner"><article id="post"><div class="post-content" id="article-container"><p>丈母娘想让我解决她们家Wifi信号弱的问题，我决定把家里原来唯一的无线路由器变成纯AP，弱电箱里放一个星际宝盒，另外在客厅放一台K2保证全家的Wifi覆盖。<br>本来路由器这种东西设置好了就不会再动了，可是我还需要解决他们家网络电视的问题，网络电视这种东西，直播源很容易失效，感觉以后会涉及到远程维护了。<br>我之前写过<a href="/2019/10/10/SSH-reverse-tunnel/" title="Ubuntu下用Autossh建立反向连接">Ubuntu下用Autossh建立反向连接</a>的博文，现在想照搬到OpenWrt上。但是OpenWrt上是用Dropbear作为SSH工具，与OpenSSH有些许不同，记录一下过程。</p><a id="more"></a><h1 id="前期准备"><a href="#前期准备" class="headerlink" title="前期准备"></a>前期准备</h1><ul><li>公网服务器A 开放端口5680(转发ssh连接)，开放端口5681(监听连接状态)，开放端口22，用OpenSSH做SSH服务器</li><li>内网机器B OpenWrt with Dropbear</li></ul><h1 id="修改公网服务器A的SSH配置文件-etc-ssh-sshd-config"><a href="#修改公网服务器A的SSH配置文件-etc-ssh-sshd-config" class="headerlink" title="修改公网服务器A的SSH配置文件/etc/ssh/sshd_config"></a>修改公网服务器A的SSH配置文件<code>/etc/ssh/sshd_config</code></h1><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">GatewayPorts</span> <span class="literal">yes</span></span><br></pre></td></tr></table></figure><p>这样可以把监听的端口绑定到任意IP 0.0.0.0上，否则只有本机127.0.0.1可以访问。<br>记得重启SSH服务器</p><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo<span class="built_in"> service </span>restart sshd</span><br></pre></td></tr></table></figure><h1 id="用内网B机器保存公网服务器A的密钥，以便免密连接"><a href="#用内网B机器保存公网服务器A的密钥，以便免密连接" class="headerlink" title="用内网B机器保存公网服务器A的密钥，以便免密连接"></a>用内网B机器保存公网服务器A的密钥，以便免密连接</h1><p>这里就跟OpenSSH不一样了，因为Dropbear没有ssh-id-copy这个命令，而Dropbear的private key又不是以明文方式存储的。</p><figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#You can get the key using</span></span><br><span class="line">dropbearkey -y -f <span class="regexp">/etc/</span>dropbear<span class="regexp">/dropbear_rsa_host_key | grep &quot;^ssh-rsa &quot; &gt; /</span>etc<span class="regexp">/dropbear/</span>authorized_keys</span><br></pre></td></tr></table></figure><p>然后将key从authorized_keys复制添加到到公网服务器的~/.ssh/authorized_keys中</p><h1 id="在内网B机器上尝试建立反向代理"><a href="#在内网B机器上尝试建立反向代理" class="headerlink" title="在内网B机器上尝试建立反向代理"></a>在内网B机器上尝试建立反向代理</h1><figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#注意Dropbear在建立SSH连接时不会自己带着私钥，需要指定</span><br><span class="line">ssh -NR <span class="number">5678</span>:<span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">22</span> 公网服务器A的用户名@公网服务器A的IP -i /etc/dropbear/dropbear_rsa_host_key</span><br></pre></td></tr></table></figure><p>正常情况下，不用输入密码，通道即建立成功。 </p><ul><li>-N：只建立连接，不打开shell </li><li>-R：指定端口映射</li></ul><h1 id="AutoSSH-自动重连"><a href="#AutoSSH-自动重连" class="headerlink" title="AutoSSH 自动重连"></a>AutoSSH 自动重连</h1><p>使用SSH的方式不够稳定，使用AutoSSH可以自动在连接断开时自动重连，再把AutoSSH加入系统服务自动启动，则可以做到稳定的连接。</p><h2 id="安装AutoSSH"><a href="#安装AutoSSH" class="headerlink" title="安装AutoSSH"></a>安装AutoSSH</h2><figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">opkg install <span class="built_in">auto</span>ssh</span><br></pre></td></tr></table></figure><h2 id="将AutoSSH添加到开机自启"><a href="#将AutoSSH添加到开机自启" class="headerlink" title="将AutoSSH添加到开机自启"></a>将AutoSSH添加到开机自启</h2><p>注意在OpenWrt里，官方的autossh早就给你准备好了 <code>/etc/init.d/autossh</code> 文件，你只需要在<code>/etc/config/autossh</code>中修改参数即可，下面贴出我的配置</p><figure class="highlight gams"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">config autossh</span><br><span class="line">        <span class="keyword">option</span> ssh <span class="string">&#x27;-i /etc/dropbear/dropbear_rsa_host_key -N -T -R 5680:localhost:22 root@kexie.party&#x27;</span></span><br><span class="line">        <span class="keyword">option</span> gatetime <span class="string">&#x27;0&#x27;</span></span><br><span class="line">        <span class="keyword">option</span> monitorport <span class="string">&#x27;5681&#x27;</span></span><br><span class="line">        <span class="keyword">option</span> poll <span class="string">&#x27;180&#x27;</span></span><br><span class="line">        <span class="keyword">option</span> enabled <span class="string">&#x27;1&#x27;</span></span><br></pre></td></tr></table></figure><p>然后开机启动Autossh<br><code>/etc/init.d/autossh enable</code></p></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer="defer"></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2020/03/25/B760HV2/"><img class="prev-cover" data-lazy-src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror='onerror=null,src="/img/404.jpg"'><div class="pagination-info"><div class="label">Previous Post</div><div class="prev_info">中兴B760HV2电视盒子完美刷机</div></div></a></div><div class="next-post pull-right"><a href="/2020/03/12/OrangePi-Setup/"><img class="next-cover" data-lazy-src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror='onerror=null,src="/img/404.jpg"'><div class="pagination-info"><div class="label">Next Post</div><div class="next_info">OrangePi第一次配置</div></div></a></div></nav></article></main><footer id="footer" data-type="color"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By KIDand怪盗基德</div><div class="framework-info"><span>Framework</span> <a href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme</span> <a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><section id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Switch Between Light And Dark Mode"><i class="fas fa-adjust"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="Setting"><i class="fas fa-cog"></i></button><button class="close" id="mobile-toc-button" type="button" title="Table Of Contents"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="Back To Top"><i class="fas fa-arrow-up"></i></button></div></section><div class="search-dialog" id="local-search"><div class="search-dialog__title" id="local-search-title">Local search</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="Search for Posts" type="text"></div></div></div><hr><div id="local-search-results"><div id="local-hits"></div><div id="local-stats"><div class="local-search-stats__hr" id="hr"><span>Powered by</span> <a href="https://github.com/wzpan/hexo-generator-search" style="color:#49b1f5">hexo-generator-search</a></div></div></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div><div><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module" defer="defer"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="/js/search/local-search.js"></script><script>var endLoading=function(){document.body.style.overflow="auto",document.getElementById("loading-box").classList.add("loaded")};window.addEventListener("load",endLoading)</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><canvas class="fireworks"></canvas><script src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script src="/js/third-party/fireworks.js"></script><script defer="defer" id="ribbon_piao" mobile="true" src="/js/third-party/piao.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zindex="-1" count="99" mobile="false" src="/js/third-party/canvas-nest.js"></script><script src="/js/third-party/activate-power-mode.js"></script><script>POWERMODE.colorful=!0,POWERMODE.shake=!0,document.body.addEventListener("input",POWERMODE)</script><script src="/js/third-party/ClickShowText.js" async="async"></script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>let pjaxSelectors = [
+  'title',
+  'meta[name=description]',
+  '#config_change',
+  '#body-wrap',
+  '#rightside-config-hide',
+  '#rightside-config-show',
+  '.js-pjax'
+]
+
+if (false) {
+  pjaxSelectors.unshift('meta[property="og:image"]', 'meta[property="og:title"]', 'meta[property="og:url"]')
+}
+
+var pjax = new Pjax({
+  elements: 'a:not([target="_blank"])',
+  selectors: pjaxSelectors,
+  cacheBust: false,
+  analytics: false,
+  scrollRestoration: false
+})
+
+document.addEventListener('pjax:complete', function () {
+  window.refreshFn()
+
+  $('script[data-pjax]').each(function () {
+    $(this).parent().append($(this).remove())
+  })
+
+  GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+  typeof chatBtnFn === 'function' && chatBtnFn()
+  typeof panguInit === 'function' && panguInit()
+
+  if (typeof gtag === 'function') {
+    gtag('config', '', {'page_path': window.location.pathname});
+  }
+
+  typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+
+  // Analytics
+  if (false) {
+    MtaH5.pgv()
+  }
+
+  // prismjs
+  typeof Prism === 'object' && Prism.highlightAll()
+})
+
+
+document.addEventListener('pjax:send', function () {
+  if (window.aplayers) {
+    for (let i = 0; i < window.aplayers.length; i++) {
+      if (!window.aplayers[i].options.fixed) {
+        window.aplayers[i].destroy()
+      }
+    }
+  }
+
+  typeof typed === 'object' && typed.destroy()
+
+  $(window).off('scroll')
+
+  //reset readmode
+  $('body').hasClass('read-mode') && $('body').removeClass('read-mode')
+
+})</script></div></body></html>
