@@ -1,4 +1,5 @@
 search:
+  theme: butterfly
   path: search.xml
   field: post
   content: true
